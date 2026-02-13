@@ -96,6 +96,26 @@ npm run dev
 
 ---
 
+
+## 🏗️ System Architecture
+
+![DocuMind AI Architecture](./docs/architecture-diagram.png)
+
+### Architecture Overview
+
+DocuMind AI follows a Retrieval-Augmented Generation (RAG) architecture:
+
+1. User uploads PDF files through the React frontend.
+2. FastAPI backend extracts text using PyPDF2.
+3. Text is chunked using LangChain.
+4. Chunks are converted into embeddings.
+5. Embeddings are stored in FAISS vector index.
+6. User query is embedded and matched using semantic search.
+7. Top-K relevant chunks are retrieved.
+8. Retrieved context + query are sent to GPT.
+9. GPT generates a structured, context-aware response.
+
+
 ## 🎯 Key Features
 - **Multi-PDF Support**: Chat with dozens of files at once.
 - **Source-Based Answers**: The AI cites whether information is from the PDF or general knowledge.
