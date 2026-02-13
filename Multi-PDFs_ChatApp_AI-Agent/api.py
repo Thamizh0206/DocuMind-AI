@@ -52,41 +52,40 @@ def get_vector_store(text_chunks):
 
 def get_conversational_chain():
     prompt_template = """
-    Answer the question as detailed as possible using ONLY the provided context.
+    You are a helpful AI assistant.
 
-    Formatting rules (STRICT):
-    1. Do NOT use bullet points, dashes, or numbering.
-    2. Write each point as a separate plain text line.
-    3. Leave ONE empty line after each line.
-    4. Do NOT combine multiple ideas in one paragraph.
-    5. Separate different topics or sections with a blank line.
-    6. Do NOT use hyphens connected to words.
+    Your task is to answer the user's question using the provided context from PDF documents.
 
-    Correct format example:
-    Point one
-
-    Point two
-
-    New section point
-
-    Another point
-
-    Incorrect format example:
-    - Point one
-    - Point two
-    Point one and point two together
-
-    If the answer is not available in the provided context, respond exactly with:
-    "Answer is not available in the context"
-
+    -----------------------
     Context:
     {context}
+    -----------------------
 
     Question:
     {question}
 
+    IMPORTANT FORMATTING RULES:
+    - Do NOT write everything in one paragraph.
+    - Structure the answer clearly using the following format:
+
+    ## 📌 Summary
+    (2-3 sentence overview)
+
+    ## 📖 Detailed Explanation
+    - Use bullet points
+    - Break long explanations into multiple short paragraphs
+    - Use numbered lists if explaining steps
+
+    ## 📚 Source
+    - If answer is from context, say: "This information is based on the provided documents."
+    - If using general knowledge, clearly say: "This part is based on general knowledge, not from the provided documents."
+
+    Keep sentences short.
+    Make the response clean and easy to read.
+
     Answer:
     """
+
     
     model = ChatOpenAI(model="openai/gpt-3.5-turbo", temperature=0.3)
     
