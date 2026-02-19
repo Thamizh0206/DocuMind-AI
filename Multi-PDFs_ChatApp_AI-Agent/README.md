@@ -1,4 +1,15 @@
-# Cogniva Docs 📚 - AI-Powered Multi-PDF Chat Agent
+---
+title: DocuMind AI
+emoji: 🧠
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+pinned: false
+app_port: 7860
+license: mit
+---
+
+# DocuMind AI 📚 - AI-Powered Multi-PDF Chat Agent
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Backend-green)

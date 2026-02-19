@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from PyPDF2 import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
@@ -15,13 +16,13 @@ import tempfile
 import uuid
 
 # Load environment variables
-load_dotenv()
+load_dotenv(override=True)
 
 # Configure OpenAI API for OpenRouter
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENROUTER_API_KEY", "")
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 
-app = FastAPI(title="Cogniva Docs API", description="API for chatting with multiple PDF documents")
+app = FastAPI(title="DocuMind AI API", description="API for chatting with multiple PDF documents")
 
 # Add CORS middleware to allow React frontend to communicate with this API
 app.add_middleware(
@@ -46,7 +47,15 @@ def get_text_chunks(text):
     return chunks
 
 def get_vector_store(text_chunks):
-    embeddings = OpenAIEmbeddings(model="text-embedding-ada-002")
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    base_url = "https://openrouter.ai/api/v1"
+    
+    # Use explicit configuration to avoid environment variable issues
+    embeddings = OpenAIEmbeddings(
+        model="text-embedding-ada-002",
+        openai_api_key=api_key,
+        openai_api_base=base_url
+    )
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     vector_store.save_local("faiss_index")
 
@@ -86,17 +95,24 @@ def get_conversational_chain():
     Answer:
     """
 
-    
-    model = ChatOpenAI(model="openai/gpt-3.5-turbo", temperature=0.3)
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    base_url = "https://openrouter.ai/api/v1"
+
+    model = ChatOpenAI(
+        model="openai/gpt-3.5-turbo",
+        temperature=0.3,
+        openai_api_key=api_key,
+        openai_api_base=base_url
+    )
     
     prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
     chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
     
     return chain
 
-@app.get("/")
-async def root():
-    return {"message": "Cogniva Docs API is running!"}
+@app.get("/api/health")
+async def health_check():
+    return {"status": "ok", "message": "DocuMind AI API is running!"}
 
 @app.post("/process-pdfs")
 async def process_pdfs(files: list[UploadFile] = File(...)):
@@ -141,7 +157,14 @@ async def ask_question(question: str = Form(...)):
             raise HTTPException(status_code=400, detail="Please process PDF files first before asking questions.")
         
         # Load embeddings and vector store
-        embeddings = OpenAIEmbeddings(model="text-embedding-ada-002")
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        base_url = "https://openrouter.ai/api/v1"
+        
+        embeddings = OpenAIEmbeddings(
+            model="text-embedding-ada-002",
+            openai_api_key=api_key,
+            openai_api_base=base_url
+        )
         new_db = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
         docs = new_db.similarity_search(question)
         
@@ -153,6 +176,24 @@ async def ask_question(question: str = Form(...)):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error answering question: {str(e)}")
+
+
+# Serve React Frontend (only in production/docker)
+if os.path.exists("frontend/dist"):
+    app.mount("/assets", StaticFiles(directory="frontend/dist/assets"), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        # API routes are prioritized automatically by FastAPI path matching order (first wins? NO)
+        # Actually for catch-all paths, simpler specific paths win IF defined first.
+        # But here we are defining it LAST, which is safest for catch-all.
+        if os.path.exists(f"frontend/dist/{full_path}") and full_path != "":
+             return FileResponse(f"frontend/dist/{full_path}")
+        return FileResponse("frontend/dist/index.html")
+else:
+    @app.get("/")
+    async def root():
+        return {"message": "DocuMind AI API is running! Frontend not built."}
 
 if __name__ == "__main__":
     import uvicorn
